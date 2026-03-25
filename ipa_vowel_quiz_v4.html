@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPA 母音辨認練習</title>
+<!-- Charis SIL for IPA -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/charis-sil/index.css">
+<!-- 臺北黑體 for Chinese UI -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/taipei-sans-tc@1.0.1/dist/regular/TaipeiSansTC-Regular.css">
+<style>
+:root {
+  --bg:        #1a1a2e;
+  --surface:   #16213e;
+  --elevated:  #0f3460;
+  --text:      #e0e0e0;
+  --text-muted:#a0a0b0;
+  --accent:    #e94560;
+  --border:    #2a2a4a;
+
+  /* quiz-specific */
+  --surf2:    #1e2a4a;
+  --border2:  #3a3a6a;
+  --acc:      #7c72ff;
+  --acc2:     #ff72b5;
+  --acc3:     #63ffd4;
+  --correct:  #4ade80;
+  --wrong:    #f87171;
+
+  /* vowel chart colors */
+  --front-unr: #a599ff;
+  --front-r:   #ff8ec0;
+  --central:   #fcd34d;
+  --back-unr:  #6ee7b7;
+  --back-r:    #93c5fd;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Charis SIL', 'Gentium Plus', 'Doulos SIL', 'Times New Roman', serif;
+  line-height: 1.55;
+  min-height: 100vh;
+  padding: 32px 24px 60px;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Chinese UI elements ── */
+.tab, .toggle-btn, .chart-title, .q-type, .prog-lbl, .score-pill,
+.next-btn, .restart, .sub, .bd-cat, .bd-stat, .opt-key, .leg,
+.res-lbl, .fb strong, h1 {
+  font-family: 'Taipei Sans TC', 'Noto Sans TC', sans-serif;
+}
+
+/* ── Layout ── */
+.main-layout {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  max-width: 1280px;
+  align-items: flex-start;
+}
+.left-panel {
+  width: 360px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+.right-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header { text-align:center; margin-bottom:32px; }
+h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); letter-spacing: -.02em; }
+h1 em { font-style:normal; color:var(--acc); }
+.sub { font-size:.85rem; color:var(--text-muted); margin-top:8px; letter-spacing:.12em; }
+
+/* ── IPA Chart ── */
+.chart-wrap { width:100%; margin-bottom:0; }
+.chart-title {
+  font-size:.78rem; color:var(--text-muted); letter-spacing:.15em;
+  text-transform:uppercase; margin-bottom:10px;
+  display:flex; align-items:center; gap:10px;
+}
+.chart-title span { color:var(--text-muted); font-size:.72rem; }
+.toggle-btn {
+  background:none; border:1px solid var(--border2); border-radius:6px;
+  color:var(--text-muted); font-size:.68rem; padding:4px 10px;
+  cursor:pointer; white-space:nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.toggle-btn:hover { border-color:var(--acc); color:var(--acc); }
+.toggle-btn.open { border-color:var(--acc2); color:var(--acc2); background:rgba(255,114,181,.08); }
+.chart-table { display:block; transition:opacity .2s; }
+.chart-table.hidden { display:none; }
+
+table.ipa { width:100%; border-collapse:collapse; font-size:.75rem; }
+table.ipa th {
+  background:var(--surf2); color:var(--text-muted); font-size:.65rem;
+  letter-spacing:.04em; font-family:'Taipei Sans TC','Noto Sans TC',sans-serif;
+  padding:6px; text-align:center; border:1px solid var(--border);
+}
+table.ipa td {
+  background:var(--surface); border:1px solid var(--border);
+  padding:5px 6px; text-align:center; vertical-align:middle;
+}
+.v { font-size:1.15rem; font-weight:700; font-family:'Charis SIL','Gentium Plus',serif; line-height:1.35; cursor:pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
+.v:hover { transform: scale(1.18); opacity:.8; }
+.v.playing { animation: ping 0.4s ease; }
+@keyframes ping {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.v.fu { color:var(--front-unr); }
+.v.fr { color:var(--front-r); }
+.v.cu { color:var(--central); }
+.v.cr { color:#fb923c; }
+.v.bu { color:var(--back-unr); }
+.v.br { color:var(--back-r); }
+
+.legend { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+.leg { display:flex; align-items:center; gap:4px; font-size:.62rem; color:var(--text-muted); }
+.leg-dot { width:7px;height:7px;border-radius:50%; }
+
+/* ── Mode tabs ── */
+.tabs { display:flex; gap:8px; margin-bottom:20px; width:100%; }
+.tab {
+  flex:1; padding:10px 6px; background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; color:var(--text-muted); font-size:.75rem;
+  cursor:pointer; text-align:center;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.tab:hover { border-color:var(--acc); color:var(--acc); }
+.tab.active { border-color:var(--acc); color:var(--acc); background:rgba(124,114,255,.1); }
+
+/* ── Progress ── */
+.prog-row { display:flex; align-items:center; gap:12px; width:100%; margin-bottom:16px; }
+.prog-bar { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.prog-fill { height:100%; background:linear-gradient(90deg,var(--acc),var(--acc2)); transition:width .4s; }
+.prog-lbl { font-size:.8rem; color:var(--text-muted); white-space:nowrap; }
+.score-pill {
+  font-size:.8rem; color:var(--acc);
+  background:rgba(124,114,255,.12); border:1px solid rgba(124,114,255,.25);
+  padding:3px 12px; border-radius:6px;
+}
+
+/* ── Card ── */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:28px 26px; width:100%;
+  animation: fadeUp .3s ease both;
+}
+.q-type {
+  font-size:.78rem; color:var(--text-muted); letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:16px;
+}
+.q-text {
+  font-size:1.1rem; line-height:1.8; margin-bottom:24px;
+  font-family:'Charis SIL','Gentium Plus',serif;
+}
+.q-text .vh {
+  font-family:'Charis SIL','Gentium Plus',serif;
+  font-size:1.9rem; font-weight:700; color:var(--acc);
+  background:rgba(124,114,255,.12); padding:4px 13px;
+  border-radius:7px; margin:0 4px; display:inline-block;
+  cursor:pointer; transition: background 0.15s ease, transform 0.15s ease;
+}
+.q-text .vh:hover { background:rgba(124,114,255,.28); transform: scale(1.08); }
+.q-text .vh.playing { animation: ping 0.4s ease; }
+.q-text .lang {
+  font-family:'Taipei Sans TC','Noto Sans TC',sans-serif;
+  font-size:.9rem; color:var(--text-muted); font-style:italic;
+}
+
+/* ── Options ── */
+.opts { display:grid; gap:10px; }
+.opts.c2 { grid-template-columns:1fr 1fr; }
+.opts.c1 { grid-template-columns:1fr; }
+.opt {
+  background:var(--bg); border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px; color:var(--text);
+  font-family:'Charis SIL','Gentium Plus',serif; font-size:.95rem;
+  cursor:pointer; text-align:left; display:flex; align-items:center; gap:11px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.opt:hover:not(:disabled) { border-color:var(--acc); background:rgba(124,114,255,.06); transform:translateX(2px); }
+.opt.correct { border-color:var(--correct)!important; background:rgba(74,222,128,.07)!important; color:var(--correct)!important; }
+.opt.wrong   { border-color:var(--wrong)!important;   background:rgba(248,113,113,.07)!important; color:var(--wrong)!important; }
+.opt.reveal  { border-color:var(--correct)!important; background:rgba(74,222,128,.04)!important; color:var(--correct)!important; opacity:.55; }
+.opt:disabled { cursor:default; }
+.opt-key {
+  width:22px;height:22px; border:1px solid currentColor; border-radius:4px;
+  display:flex;align-items:center;justify-content:center; font-size:.72rem;
+  flex-shrink:0; opacity:.45;
+}
+
+/* ── Feedback ── */
+.fb {
+  margin-top:16px; padding:16px 18px; border-radius:10px;
+  font-size:.95rem; line-height:1.7; display:none;
+  animation: fadeUp .2s ease both;
+  font-family:'Charis SIL','Gentium Plus',serif;
+}
+.fb.ok  { background:rgba(74,222,128,.06); border:1px solid rgba(74,222,128,.2); color:#86efac; display:block; }
+.fb.bad { background:rgba(248,113,113,.06); border:1px solid rgba(248,113,113,.2); color:#fca5a5; display:block; }
+.fb strong { display:block; margin-bottom:5px; font-size:.85rem; }
+.fb .tip {
+  margin-top:8px; font-size:.88rem;
+  font-family:'Taipei Sans TC','Noto Sans TC',sans-serif;
+  color:var(--text-muted);
+}
+
+/* ── Next button ── */
+.next-btn {
+  width:100%; margin-top:14px;
+  background:linear-gradient(135deg,var(--acc),#a07aff);
+  border:none; border-radius:10px; padding:14px; color:#fff;
+  font-size:.9rem; cursor:pointer; letter-spacing:.04em;
+  display:none;
+  transition: opacity 0.18s ease, transform 0.15s ease;
+  animation: fadeUp .2s ease both;
+}
+.next-btn:hover { opacity:.88; transform:translateY(-1px); }
+.next-btn:active { transform:translateY(0); }
+.next-btn.show { display:block; }
+
+/* ── Result ── */
+.result { display:none; text-align:center; padding:44px 24px; width:100%; }
+.result.show { display:block; animation: fadeUp .35s ease both; }
+.res-score {
+  font-size:4.5rem; font-weight:700;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  font-family:'Taipei Sans TC','Noto Sans TC',sans-serif;
+}
+.res-lbl { color:var(--text-muted); font-size:1rem; margin:8px 0 26px; }
+.res-bd {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:18px; margin-bottom:26px; text-align:left;
+}
+.bd-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:7px 0; border-bottom:1px solid var(--border); font-size:.9rem;
+}
+.bd-row:last-child { border-bottom:none; }
+.bd-cat { color:var(--text-muted); font-size:.8rem; }
+.bd-stat { }
+.bd-stat.g { color:var(--correct); }
+.bd-stat.b { color:var(--wrong); }
+.restart {
+  background:transparent; border:1px solid var(--acc); border-radius:10px;
+  padding:13px 36px; color:var(--acc); font-size:.9rem; cursor:pointer;
+  transition: background 0.18s ease, transform 0.15s ease;
+}
+.restart:hover { background:rgba(124,114,255,.12); transform:translateY(-1px); }
+.restart:active { transform:translateY(0); }
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .main-layout { flex-direction: column; }
+  .left-panel { width: 100%; position: static; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>IPA <em>母音</em> 辨認練習</h1>
+  <div class="sub">前後 · 高低 · 圓唇 // 全母音系統</div>
+</header>
+
+<div class="main-layout">
+
+  <!-- Left: IPA Chart -->
+  <div class="left-panel">
+    <div class="chart-wrap">
+      <div class="chart-title">
+        ⬡ IPA 母音表
+        <button id="chartToggle" onclick="toggleChart()" class="toggle-btn open">隱藏參考表</button>
+      </div>
+      <div class="chart-table" id="chartTable">
+        <table class="ipa">
+          <tr>
+            <th>高低 \ 前後</th>
+            <th>前元音 (Front)</th>
+            <th>央元音 (Central)</th>
+            <th>後元音 (Back)</th>
+          </tr>
+          <tr>
+            <th>高 Close</th>
+            <td><span class="v fu">i</span> 不圓唇<br><span class="v fr">y</span> 圓唇</td>
+            <td><span class="v cu">ɨ</span> 不圓唇<br><span class="v cr">ʉ</span> 圓唇</td>
+            <td><span class="v bu">ɯ</span> 不圓唇<br><span class="v br">u</span> 圓唇</td>
+          </tr>
+          <tr>
+            <th>半高 Close-mid</th>
+            <td><span class="v fu">e</span> 不圓唇<br><span class="v fr">ø</span> 圓唇</td>
+            <td><span class="v cu">ɘ</span> 不圓唇<br><span class="v cr">ɵ</span> 圓唇</td>
+            <td><span class="v bu">ɤ</span> 不圓唇<br><span class="v br">o</span> 圓唇</td>
+          </tr>
+          <tr>
+            <th>中 Mid</th>
+            <td></td>
+            <td><span class="v cu">ə</span> schwa</td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>半低 Open-mid</th>
+            <td><span class="v fu">ɛ</span> 不圓唇<br><span class="v fr">œ</span> 圓唇</td>
+            <td><span class="v cu">ɜ</span> 不圓唇<br><span class="v cr">ɞ</span> 圓唇</td>
+            <td><span class="v bu">ʌ</span> 不圓唇<br><span class="v br">ɔ</span> 圓唇</td>
+          </tr>
+          <tr>
+            <th>低 Open</th>
+            <td><span class="v fu">a</span> 不圓唇<br><span class="v fr">æ</span> 不圓唇*</td>
+            <td><span class="v cu">ä</span></td>
+            <td><span class="v bu">ɑ</span> 不圓唇<br><span class="v br">ɒ</span> 圓唇</td>
+          </tr>
+          <tr>
+            <td colspan="4" style="font-size:.78rem;color:var(--text-muted);padding:8px 12px;font-family:'Taipei Sans TC','Noto Sans TC',sans-serif;">
+              * æ 嚴格說是 near-open front；ı（土耳其語）通常對應 ɨ；ü=y；ö=ø
+            </td>
+          </tr>
+        </table>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--front-unr)"></div>前不圓</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--front-r)"></div>前圓唇</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--central)"></div>央不圓</div>
+          <div class="leg"><div class="leg-dot" style="background:#f97316"></div>央圓唇</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--back-unr)"></div>後不圓</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--back-r)"></div>後圓唇</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Quiz area -->
+  <div class="right-panel">
+
+    <div class="tabs">
+      <div class="tab active" id="tab-basic" onclick="setMode('basic')">基礎辨認</div>
+      <div class="tab" id="tab-tricky" onclick="setMode('tricky')">易混淆組</div>
+      <div class="tab" id="tab-harmony" onclick="setMode('harmony')">Harmony應用</div>
+      <div class="tab" id="tab-lang" onclick="setMode('lang')">語言實例</div>
+    </div>
+
+    <div class="prog-row">
+      <div class="prog-bar"><div class="prog-fill" id="pFill" style="width:0%"></div></div>
+      <div class="prog-lbl" id="pLbl">0 / 10</div>
+      <div class="score-pill" id="sPill">✓ 0</div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="q-type" id="qType"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="opts" id="opts"></div>
+      <div class="fb" id="fb"></div>
+      <button class="next-btn" id="nextBtn" onclick="next()">下一題 →</button>
+    </div>
+
+    <div class="result" id="result">
+      <div class="res-score" id="rScore"></div>
+      <div class="res-lbl" id="rLbl"></div>
+      <div class="res-bd" id="rBd"></div>
+      <button class="restart" onclick="restart()">再練一次</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const BANK = {
+
+basic: [
+  { type:"前/後/央", q:"母音 <span class='vh'>i</span> 是？", opts:["前元音","央元音","後元音"], ans:0, exp:"i 是最典型的前元音，高前不圓唇。幾乎所有語言都有。", tip:"記憶點：嘴角向兩側拉開，舌位最前最高。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>u</span> 是？", opts:["前元音","央元音","後元音"], ans:2, exp:"u 是後元音，高後圓唇。舌位在後方，雙唇圓攏。", tip:"和 i 是「鏡像」——一個最前，一個最後。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>ə</span>（schwa）是？", opts:["前元音","央元音","後元音"], ans:1, exp:"ə 是央元音，舌位在口腔正中間，最放鬆的音。英語 'about' 第一個音節就是 ə。", tip:"schwa = 中央 = 最省力的母音。" },
+  { type:"圓唇", q:"母音 <span class='vh'>y</span> 是？", opts:["前不圓唇","前圓唇","後圓唇","後不圓唇"], ans:1, exp:"y 是前元音圓唇（即土耳其語/法語的 ü）。舌位跟 i 一樣靠前，但嘴唇圓攏。", tip:"= 土耳其語 ü，法語 tu 的 u，德語 über 的 ü。" },
+  { type:"圓唇", q:"母音 <span class='vh'>ɯ</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇","後圓唇"], ans:2, exp:"ɯ 是後元音不圓唇（非常少見）。舌位跟 u 一樣靠後，但嘴唇不圓攏。", tip:"= 土耳其語 ı，韓語 으。" },
+  { type:"圓唇", q:"母音 <span class='vh'>ø</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇","後圓唇"], ans:1, exp:"ø 是前元音圓唇（即土耳其語/法語的 ö）。比 y 稍低（半高）。", tip:"= 土耳其語 ö，法語 feu，德語 Höhle 的 ö。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>ɑ</span> 是？", opts:["前元音","央元音","後元音"], ans:2, exp:"ɑ 是後元音低不圓唇。注意跟 a（前低不圓）的差別。英語 'father' 的美式發音。", tip:"ɑ（帶尾鉤）= 後；a（無尾鉤）= 前。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>ɛ</span> 是？", opts:["前元音","央元音","後元音"], ans:0, exp:"ɛ 是前元音半低不圓唇。比 e 更開口。法語 être 的 è，英語 bed 的 e。", tip:"ɛ 比 e 低一格，同樣是前不圓唇。" },
+  { type:"圓唇", q:"母音 <span class='vh'>ɔ</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇","後圓唇"], ans:3, exp:"ɔ 是後元音半低圓唇。英語 'thought'（英式），法語 or 的 o。", tip:"ɔ = o 的低版本，同樣是後圓唇。" },
+  { type:"圓唇", q:"母音 <span class='vh'>œ</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇","後圓唇"], ans:1, exp:"œ 是前元音半低圓唇。法語 peur，德語 zwölf 的 ö（開音節）。", tip:"œ 是 ø 的低版本——ø(半高前圓)，œ(半低前圓)。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>ʌ</span> 是？", opts:["前元音","央元音","後元音"], ans:2, exp:"ʌ 是後元音半低不圓唇。英語 cup, bus, love 的母音。", tip:"ʌ 看起來像倒過來的 v，是後元音不圓唇。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>æ</span> 是？", opts:["前元音","央元音","後元音"], ans:0, exp:"æ 是前元音近低不圓唇。英語 cat, bad, man 的母音。", tip:"æ = a + e 的合體，是前元音低不圓唇。" },
+  { type:"圓唇", q:"母音 <span class='vh'>ɨ</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇（央偏後）","後圓唇"], ans:2, exp:"ɨ 是央元音（偏後）不圓唇高元音。俄語某些無重音位置，羅馬尼亞語的 â/î。", tip:"ɨ 帶橫槓，是 i 和 ɯ 之間的音——央偏後不圓唇。" },
+  { type:"前/後/央", q:"母音 <span class='vh'>ɤ</span> 是？", opts:["前元音","央元音","後元音"], ans:2, exp:"ɤ 是後元音半高不圓唇，極為罕見。跟 o 位置相同但不圓唇。韓語 으 有時標注為此。", tip:"ɤ = o 的不圓唇版。" },
+  { type:"圓唇", q:"母音 <span class='vh'>ɒ</span> 是？", opts:["前不圓唇","前圓唇","後不圓唇","後圓唇"], ans:3, exp:"ɒ 是後元音低圓唇。英式英語 'lot, hot' 的母音（美式用 ɑ）。", tip:"ɒ 看起來像倒過來的 ɑ，是後低圓唇。" },
+],
+
+tricky: [
+  { type:"易混淆：前後", q:"<span class='vh'>a</span> 和 <span class='vh'>ɑ</span> 的差別？", opts:["a=後, ɑ=前","a=前, ɑ=後","兩個都是前元音","兩個都是後元音"], ans:1, exp:"a（無尾鉤）= 前低不圓；ɑ（有尾鉤）= 後低不圓。許多語言用 a 寬泛代表低元音，但嚴格IPA有別。", tip:"記憶：ɑ 有尾鉤→往後拖→後元音。" },
+  { type:"易混淆：圓唇", q:"<span class='vh'>e</span> vs <span class='vh'>ø</span>，差在哪？", opts:["前後不同","高低不同","只有圓唇性不同","完全不同"], ans:2, exp:"e 和 ø 都是前元音半高，差別只有一個：e 不圓唇，ø 圓唇。同樣高度，同樣是前元音。", tip:"ø = e + 圓唇。土耳其語ö/德語ö就是這個音。" },
+  { type:"易混淆：圓唇", q:"<span class='vh'>i</span> vs <span class='vh'>y</span>，差在哪？", opts:["前後不同","高低不同","只有圓唇性不同","完全不同"], ans:2, exp:"i 和 y 都是前元音高元音，差別只有圓唇性：i 不圓唇，y 圓唇。", tip:"y = i + 圓唇。法語 tu，德語 über，土耳其語 ü。" },
+  { type:"易混淆：前後", q:"<span class='vh'>u</span> vs <span class='vh'>y</span>，差在哪？", opts:["只有前後不同，都是圓唇","只有圓唇性不同","只有高低不同","完全不同"], ans:0, exp:"u（後高圓唇）vs y（前高圓唇）——兩者都是高元音圓唇，差別只在前後位置。", tip:"y = u 往前移，保持圓唇。" },
+  { type:"易混淆：前後", q:"<span class='vh'>ɯ</span> vs <span class='vh'>i</span>，差在哪？", opts:["只有前後不同，都是不圓唇","只有圓唇性不同","只有高低不同","前後+圓唇都不同"], ans:0, exp:"i（前高不圓）vs ɯ（後高不圓）——都是高不圓唇，差別只在前後。", tip:"ɯ = i 往後移，維持不圓唇。" },
+  { type:"易混淆：高低", q:"<span class='vh'>e</span> vs <span class='vh'>ɛ</span>，差在哪？", opts:["只有高低不同（同是前不圓唇）","只有圓唇性不同","只有前後不同","完全不同"], ans:0, exp:"e（半高）vs ɛ（半低）——都是前元音不圓唇，差別只在高低。ɛ 開口更大。", tip:"英語 'bed' 的母音是 ɛ；法語 été 是 e。" },
+  { type:"易混淆：高低", q:"<span class='vh'>o</span> vs <span class='vh'>ɔ</span>，差在哪？", opts:["只有高低不同（同是後圓唇）","只有圓唇性不同","只有前後不同","完全不同"], ans:0, exp:"o（半高後圓）vs ɔ（半低後圓）——都是後元音圓唇，ɔ 開口更大。", tip:"ɔ 比 o 嘴巴開更大，英式英語 'thought'。" },
+  { type:"易混淆：央vs後", q:"<span class='vh'>ə</span> vs <span class='vh'>ɨ</span>，差在哪？", opts:["高低不同，都是央不圓唇","圓唇不同","前後不同","完全無關"], ans:0, exp:"ə（中高度央）vs ɨ（高央/後不圓）——ə 是mid，ɨ 是close，都在央到後不圓唇的區域。", tip:"ə 更中間更放鬆；ɨ 更高更後，如土耳其語 ı。" },
+  { type:"易混淆：圓唇", q:"<span class='vh'>ø</span> vs <span class='vh'>œ</span>，差在哪？", opts:["只有高低不同（同是前圓唇）","只有圓唇性不同","只有前後不同","完全不同"], ans:0, exp:"ø（半高前圓）vs œ（半低前圓）——都是前元音圓唇，œ 開口更大。", tip:"法語 feu=ø，peur=œ；德語閉音節ö=ø，開音節ö=œ。" },
+  { type:"易混淆：前後", q:"<span class='vh'>ʌ</span> vs <span class='vh'>a</span>，差在哪？", opts:["ʌ=後不圓，a=前不圓","ʌ=前不圓，a=後不圓","ʌ=後圓唇，a=前不圓","高低不同"], ans:0, exp:"ʌ 是後元音半低不圓唇，a 是前元音低不圓唇。ʌ 比 a 稍高，位置偏後。英語 cup=ʌ，法語 patte=a。", tip:"ʌ 像倒V，在後元音位置。" },
+],
+
+harmony: [
+  { type:"Harmony預測", q:"某語言後綴母音跟詞幹前後一致。詞幹含 <span class='vh'>ø</span>，後綴應選？", opts:["後元音後綴","前元音後綴","圓唇才是關鍵，與前後無關","無法判斷"], ans:1, exp:"ø 是前元音，前後和諧→選前元音後綴。圓唇性是額外維度，但前後是最基礎的分類。", tip:"Harmony 第一步：確認追蹤的是哪個維度（前後？圓唇？高低？）" },
+  { type:"Harmony預測", q:"某語言同時追蹤前後+圓唇。詞幹含 <span class='vh'>ɯ</span>，後綴應是？", opts:["前不圓（i類）","前圓（y類）","後不圓（ɯ類）","後圓（u類）"], ans:2, exp:"ɯ 是後元音不圓唇→後綴要後、不圓唇，即 ɯ 類。", tip:"2維度harmony：前後×圓唇，產生4種後綴。" },
+  { type:"Harmony預測", q:"詞幹含 <span class='vh'>œ</span>，語言追蹤前後+圓唇，後綴應是？", opts:["前不圓（i/e類）","前圓（y/ø類）","後不圓（ɯ/a類）","後圓（u/o類）"], ans:1, exp:"œ 是前元音圓唇（半低）→後綴要前、圓唇。", tip:"œ 跟 ø 同屬前圓唇家族，差別只在高低。" },
+  { type:"Harmony分析", q:"觀察：kup-um, top-um, bil-im, ev-im。這個語言的harmony依據是？", opts:["只看圓唇","只看前後","前後+圓唇","只看高低"], ans:1, exp:"kup/top 含後元音 u/o→-um；bil/ev 含前元音 i/e→-im。後綴只有 um/im 兩種，都是圓唇，所以關鍵是前後，不是圓唇。", tip:"先數後綴有幾種形式，再找規律。" },
+  { type:"Harmony分析", q:"觀察：kol-um, göl-üm, bil-im, kız-um。後綴有幾種，harmony依據是？", opts:["2種，只看前後","3種，前後+圓唇（前圓唇獨立）","4種，前後×圓唇完整","無法判斷"], ans:1, exp:"um(後)、üm(前圓)、im(前不圓)三種。前不圓→-im，前圓→-üm，後（不論圓唇）→-um。前元音細分了圓唇，後元音沒有。", tip:"這是土耳其語式harmony：前元音區分圓唇，後元音不區分。" },
+  { type:"Harmony分析", q:"赫瓦爾什語插入音規則：後綴含 u/o → 插 u；含 i → 插 i；其他 → 插 ɨ。這追蹤的是？", opts:["只看圓唇","只看前後（大略）","前後+圓唇完整系統","隨機分配"], ans:1, exp:"u/o（後圓）→u；i（前）→i；其他多為後不圓→ɨ。是前後的粗略harmony，圓唇是次要效果。" },
+  { type:"Harmony預測", q:"某語言只有 a（後低）和 e（前半高）兩種後綴形式，跟著詞幹前後變化。詞幹含 <span class='vh'>ɛ</span>，接哪個？", opts:["-a（後）","-e（前）","無法判斷"], ans:1, exp:"ɛ 是前元音，接前元音後綴 -e。注意：後綴不一定要跟詞幹「高低」一致，前後一致就夠了。" },
+],
+
+lang: [
+  { type:"語言實例：土耳其語", q:"土耳其語 <span class='lang'>gün</span>（日，母音 ü=y）+ 複數後綴 -lar/-ler，選哪個？", opts:["-lar（後元音）","-ler（前元音）"], ans:1, exp:"ü/y 是前元音→接前元音後綴 -ler。gün-ler = 日子們。", tip:"土耳其語複數只看前後：前→-ler，後→-lar。" },
+  { type:"語言實例：芬蘭語", q:"芬蘭語 harmony：前元音組(ä,ö,y)，後元音組(a,o,u)。詞幹 <span class='lang'>tyttö</span>（ö=前圓）接入格後綴 -ssa/-ssä，選哪個？", opts:["-ssa（後）","-ssä（前）"], ans:1, exp:"ö 是前元音，接前元音後綴 -ssä。芬蘭語前後harmony跟土耳其語原理相同。", tip:"ä 是前元音版的 a，ö 是前圓唇版的 o。" },
+  { type:"語言實例：芬蘭語", q:"芬蘭語詞幹 <span class='lang'>koulu</span>（ou，後元音）+ -ssa/-ssä？", opts:["-ssa（後）","-ssä（前）"], ans:0, exp:"o 和 u 都是後元音→接後元音後綴 -ssa。koulu-ssa = 在學校裡。" },
+  { type:"語言實例：匈牙利語", q:"匈牙利語也有 vowel harmony。詞幹 <span class='lang'>kéz</span>（é=前不圓，類似 e:）接賓格後綴 -t，前面要加連接母音 -e-/-ö-/-a-/-o-，選哪個？", opts:["-e-（前不圓）","-ö-（前圓）","-a-（後不圓）","-o-（後圓）"], ans:0, exp:"é 是前元音不圓唇→連接母音用前不圓唇 -e-。kéz-e-t = 手（賓格）。" },
+  { type:"語言實例：韓語", q:"韓語陽性母音：ㅏ(a)、ㅗ(o)；陰性母音：其他（含ㅓ=ʌ、ㅜ=u）。韓語擬聲詞重疊時harmony影響形狀變化。ㅓ（ʌ）屬於哪組？", opts:["陽性（後圓唇）","陰性（後不圓唇）","前元音組","央元音"], ans:1, exp:"ʌ 是後元音不圓唇→屬陰性母音組。韓語的陽/陰分類大致對應後圓唇 vs 其他。", tip:"韓語harmony不完全是IPA前後，但ʌ的後不圓特性讓它歸入陰性組。" },
+  { type:"語言實例：哈薩克語", q:"哈薩克語 harmony 同時追蹤前後（前：ä,e,i,ö,ü / 後：a,o,u,ə,ɯ）。<span class='vh'>ə</span>（央元音）在哈薩克語歸入哪組？", opts:["前元音組","後元音組","中性，不參與harmony","兩組都可以"], ans:1, exp:"哈薩克語把 ə 歸入後元音組。注意：各語言如何分類央元音不一定符合IPA嚴格定義，要從資料判斷。", tip:"語奧題裡，央元音歸屬要從實際資料推斷，不能只靠IPA位置。" },
+  { type:"語言實例：通則", q:"某語言資料：前元音詞幹→後綴含 i；後元音詞幹→後綴含 u。詞幹含 <span class='vh'>ɔ</span>（後圓唇半低），後綴母音是？", opts:["i（前）","u（後）","無法判斷","ɔ（維持原音）"], ans:1, exp:"ɔ 是後元音→後綴含 u。Harmony 規則按大類（前/後）運作，不要求後綴跟詞幹「完全一樣」的母音。" },
+]
+};
+
+let mode = 'basic', qs = [], cur = 0, score = 0, done = false;
+let catStats = {};
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + m).classList.add('active');
+  restart();
+}
+
+function toggleChart() {
+  const t = document.getElementById('chartTable');
+  const b = document.getElementById('chartToggle');
+  const isHidden = t.classList.toggle('hidden');
+  b.textContent = isHidden ? '顯示參考表' : '隱藏參考表';
+  b.classList.toggle('open', !isHidden);
+}
+
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [b[i],b[j]] = [b[j],b[i]];
+  }
+  return b;
+}
+
+function init() {
+  qs = shuffle(BANK[mode]).slice(0, 10);
+  cur = 0; score = 0; done = false; catStats = {};
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('card').style.display = 'block';
+  render();
+}
+
+function render() {
+  const q = qs[cur]; done = false;
+  document.getElementById('qType').textContent = q.type;
+  document.getElementById('qText').innerHTML = q.q;
+  const og = document.getElementById('opts');
+  og.innerHTML = '';
+  og.className = 'opts ' + (q.opts.length <= 2 ? 'c1' : 'c2');
+  const keys = ['A','B','C','D'];
+  q.opts.forEach((o,i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<span class="opt-key">${keys[i]}</span>${o}`;
+    b.onclick = () => pick(i);
+    og.appendChild(b);
+  });
+  document.getElementById('fb').className = 'fb';
+  document.getElementById('fb').innerHTML = '';
+  document.getElementById('nextBtn').classList.remove('show');
+  const pct = cur / qs.length * 100;
+  document.getElementById('pFill').style.width = pct + '%';
+  document.getElementById('pLbl').textContent = `${cur} / ${qs.length}`;
+  document.getElementById('sPill').textContent = `✓ ${score}`;
+}
+
+function pick(idx) {
+  if (done) return; done = true;
+  const q = qs[cur];
+  const btns = document.querySelectorAll('.opt');
+  btns[idx].classList.add(idx === q.ans ? 'correct' : 'wrong');
+  if (idx !== q.ans) btns[q.ans].classList.add('reveal');
+  btns.forEach(b => b.disabled = true);
+  if (idx === q.ans) score++;
+  const fb = document.getElementById('fb');
+  fb.className = 'fb ' + (idx === q.ans ? 'ok' : 'bad');
+  fb.innerHTML = `<strong>${idx === q.ans ? '✓ 正確' : '✗ 錯誤'}</strong>${q.exp}${q.tip ? `<div class="tip">💡 ${q.tip}</div>` : ''}`;
+  if (!catStats[q.type]) catStats[q.type] = {c:0,t:0};
+  catStats[q.type].t++;
+  if (idx === q.ans) catStats[q.type].c++;
+  document.getElementById('sPill').textContent = `✓ ${score}`;
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+function next() {
+  cur++;
+  if (cur >= qs.length) showResult(); else render();
+}
+
+function showResult() {
+  document.getElementById('card').style.display = 'none';
+  const rs = document.getElementById('result');
+  rs.classList.add('show');
+  const pct = Math.round(score / qs.length * 100);
+  document.getElementById('rScore').textContent = `${score}/${qs.length}`;
+  const lbls = ['IPA 符號還需要大量練習','概念有了，繼續刷','有基礎，針對錯題複習','直覺已建立'];
+  document.getElementById('rLbl').textContent = lbls[pct>=90?3:pct>=70?2:pct>=50?1:0];
+  const bd = document.getElementById('rBd');
+  bd.innerHTML = '';
+  Object.entries(catStats).forEach(([cat,s]) => {
+    const p = Math.round(s.c/s.t*100);
+    const r = document.createElement('div');
+    r.className = 'bd-row';
+    r.innerHTML = `<span class="bd-cat">${cat}</span><span class="bd-stat ${p>=70?'g':'b'}">${s.c}/${s.t} (${p}%)</span>`;
+    bd.appendChild(r);
+  });
+}
+
+function restart() {
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('card').style.display = 'block';
+  init();
+}
+
+document.addEventListener('keydown', e => {
+  if (done) { if (e.key==='Enter'||e.key===' ') next(); return; }
+  const m = {a:0,b:1,c:2,d:3,'1':0,'2':1,'3':2,'4':3};
+  if (m[e.key.toLowerCase()] !== undefined) pick(m[e.key.toLowerCase()]);
+});
+
+// ── IPA Audio System (Wikimedia Commons real recordings) ──────────
+// Maps IPA symbol → Wikimedia Commons filename (no hash needed)
+// Files are linguist recordings of isolated vowels, CC-BY-SA licensed
+const IPA_FILES = {
+  'i':  'Close_front_unrounded_vowel.ogg',
+  'y':  'Close_front_rounded_vowel.ogg',
+  'ɨ':  'Close_central_unrounded_vowel.ogg',
+  'ʉ':  'Close-mid_central_rounded_vowel.ogg',   // closest available
+  'ɯ':  'Close_back_unrounded_vowel.ogg',
+  'u':  'Close_back_rounded_vowel.ogg',
+  'e':  'Close-mid_front_unrounded_vowel.ogg',
+  'ø':  'Close-mid_front_rounded_vowel.ogg',
+  'ɘ':  'Close-mid_central_unrounded_vowel.ogg',
+  'ɵ':  'Close-mid_central_rounded_vowel.ogg',
+  'ɤ':  'Close-mid_back_unrounded_vowel.ogg',
+  'o':  'Close-mid_back_rounded_vowel.ogg',
+  'ə':  'Mid-central_vowel.ogg',
+  'ɛ':  'Open-mid_front_unrounded_vowel.ogg',
+  'œ':  'Open-mid_front_rounded_vowel.ogg',
+  'ɜ':  'Open-mid_central_unrounded_vowel.ogg',
+  'ɞ':  'Open-mid_central_rounded_vowel.ogg',
+  'ʌ':  'Open-mid_back_unrounded_vowel.ogg',
+  'ɔ':  'Open-mid_back_rounded_vowel.ogg',
+  'a':  'Open_front_unrounded_vowel.ogg',
+  'æ':  'Near-open_front_unrounded_vowel.ogg',
+  'ä':  'Open_central_unrounded_vowel.ogg',
+  'ɑ':  'Open_back_unrounded_vowel.ogg',
+  'ɒ':  'Open_back_rounded_vowel.ogg',
+};
+
+const IPA_LABEL = {
+  'i':'前高不圓唇', 'y':'前高圓唇', 'ɨ':'央高不圓唇', 'ʉ':'央高圓唇',
+  'ɯ':'後高不圓唇', 'u':'後高圓唇',
+  'e':'前半高不圓唇', 'ø':'前半高圓唇', 'ɘ':'央半高不圓唇', 'ɵ':'央半高圓唇',
+  'ɤ':'後半高不圓唇', 'o':'後半高圓唇',
+  'ə':'央中 schwa',
+  'ɛ':'前半低不圓唇', 'œ':'前半低圓唇', 'ɜ':'央半低不圓唇', 'ɞ':'央半低圓唇',
+  'ʌ':'後半低不圓唇', 'ɔ':'後半低圓唇',
+  'a':'前低不圓唇', 'æ':'前近低不圓唇', 'ä':'央低', 'ɑ':'後低不圓唇', 'ɒ':'後低圓唇',
+};
+
+// Cache: symbol → resolved audio URL
+const audioUrlCache = {};
+// Fetch Wikimedia API to resolve direct URL (avoids hardcoding hash paths)
+async function resolveAudioUrl(symbol) {
+  if (audioUrlCache[symbol]) return audioUrlCache[symbol];
+  const filename = IPA_FILES[symbol];
+  if (!filename) return null;
+  try {
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
+    const res = await fetch(apiUrl);
+    const data = await res.json();
+    const pages = data.query.pages;
+    const page = Object.values(pages)[0];
+    const url = page?.imageinfo?.[0]?.url || null;
+    if (url) audioUrlCache[symbol] = url;
+    return url;
+  } catch(e) {
+    return null;
+  }
+}
+
+// Single shared <audio> element
+const audioEl = new Audio();
+
+async function speakIPA(symbol, el) {
+  const url = await resolveAudioUrl(symbol);
+  if (!url) return;
+  audioEl.pause();
+  audioEl.src = url;
+  if (el) {
+    el.classList.add('playing');
+    const done = () => el.classList.remove('playing');
+    audioEl.onended = done;
+    audioEl.onerror = done;
+  }
+  audioEl.play().catch(() => {});
+}
+
+// Preload URLs for all symbols in the chart (background, silent)
+function preloadAudioUrls() {
+  Object.keys(IPA_FILES).forEach(sym => resolveAudioUrl(sym));
+}
+
+function attachClickToEl(el) {
+  const sym = el.textContent.trim();
+  if (!IPA_FILES[sym]) return;
+  el.title = (IPA_LABEL[sym] || sym) + ' — 點擊試聽';
+  // Remove old listener by replacing with clone
+  const clone = el.cloneNode(true);
+  el.parentNode.replaceChild(clone, el);
+  clone.addEventListener('click', (e) => {
+    e.stopPropagation();
+    speakIPA(sym, clone);
+  });
+}
+
+function attachTableClicks() {
+  document.querySelectorAll('.v').forEach(attachClickToEl);
+}
+
+function attachQuestionClick() {
+  document.querySelectorAll('.q-text .vh').forEach(attachClickToEl);
+}
+
+// Patch render() to re-attach question clicks after each new question
+const _origRender = render;
+render = function() {
+  _origRender();
+  setTimeout(attachQuestionClick, 0);
+};
+
+attachTableClicks();
+setTimeout(attachQuestionClick, 100);
+preloadAudioUrls();
+
+init();
+</script>
+</body>
+</html>
